@@ -12,7 +12,8 @@ class Catcher {
         this.count = 0;
         this.run = true;
         this.channel = channel;
-        this.data = fs.readFileSync('pokes.txt', 'utf8').toString().split('\n');
+        this.poke = fs.readFileSync('pokes.txt', 'utf8').toString().split('\n');
+        this.hint = {};
 
         this.client.on('ready', this.onReady.bind(this));
         this.client.on("messageCreate", this.onMessageCreate.bind(this));
@@ -27,7 +28,6 @@ class Catcher {
     }
 
     async onMessageCreate(message) {
-        console.log("as")
         try {
             let prefix = "$";
             const args = message.content.slice(prefix.length).trim().split(/ +/g);
@@ -49,43 +49,15 @@ class Catcher {
                     if (this.verificate(message.channel.id, message.author.id)) {
                         console.log("in");
                         if (message.embeds[i].title.includes("A wild pokémon has аppeаred!")) {
-                            // await delay(3000);
-                            // message.channel.send(`<@!${process.env.POKE_ID}> hint`);
+                            this.hint[message.channel.id] = { count: 0, responses: [] };
+
+                            message.channel.sendTyping();
                             setTimeout(() => {
-                                message.channel.send(`<@!${process.env.POKE_ID}> hint`);
-                            }, 3000);
-                        
+                                this.sendHintRequest(message.channel);
+                            }, 5000); 
                         }
                         if (message.embeds[i].title.includes("fled")) {
                             this.client.channels.cache.get("1005818166775119994").send(message.embeds[i].title.split("A new")[0]);
-                        }
-                    }
-                }
-
-                if (this.verificate(message.channel.id, message.author.id)) {
-                    if (message.content.startsWith("The wild pokémon is ")) {
-                        const anon = message.content.split("is ")[1].split("\\").join("");
-                        try {
-                            let predict = [];
-                            for (let i = 0; i < anon.length - 1; i++) {
-                                if (anon.charAt(i) == '_') continue;
-                                predict = [];
-                                for (let j = 0; j < this.data.length; j++) {
-                                    if (anon.charAt(i).toLowerCase() == this.data[j].charAt(i).toLowerCase()) {
-                                        predict.push(this.data[j]);
-                                    }
-                                }
-                            }
-                            console.log(predict);
-                            for (let name in predict) {
-                                if (predict[name].length == anon.length) {
-                                    message.channel.send(`<@!${process.env.POKE_ID}> catch ${predict[name]}`);
-                                    this.client.channels.cache.get("1253691191179083898").send(`${this.count} - ${predict[name]}`);
-                                    this.count++;
-                                }
-                            }
-                        } catch (e) { 
-                            console.log('Error:', e.stack);
                         }
                     }
                 }
@@ -95,9 +67,72 @@ class Catcher {
         }
     }
 
+    async sendHintRequest(channel) {
+        await channel.send(`<@${process.env.POKE_ID}> hint`);
+
+        const filter = response => response.author.id === process.env.POKE_ID && response.content.startsWith("The wild pokémon is");
+        try {
+            const collected = await channel.awaitMessages({ filter, max: 1, time: 10000, errors: ['time'] });
+            const response = collected.first();
+            const channelId = channel.id;
+
+            this.hint[channelId].responses.push(response.content.split("The wild pokémon is")[1].trim().replace(/\\/g, ''));
+            // console.log(this.hint[channelId].responses);
+            // console.log(this.hint[channelId].count);
+
+            if (this.hint[channelId].count < 2) {
+                channel.sendTyping();
+                setTimeout(() => {
+                    this.sendHintRequest(channel);
+                }, 1000); 
+                this.hint[channelId].count++;
+            } else {
+                let combined = Array(this.hint[channelId].responses[0].length).fill('_');
+
+                for (const hint of this.hint[channelId].responses) {
+                    for (let i = 0; i < hint.length; i++) {
+                        if (hint[i] !== '_' && combined[i] === '_') {
+                            combined[i] = hint[i];
+                        }
+                    }
+                }
+                // console.log(combined);
+
+                const anon = combined.join('');
+                console.log(anon);
+                let predict = [];
+                let data = this.poke;
+                for (let i = 0; i < anon.length - 1; i++) {
+                    if (anon.charAt(i) == '_') continue;
+                    predict = [];
+                    for (let j = 0; j < data.length; j++) {
+                        if (data[j].length !== anon.length) continue;
+                        if (anon.charAt(i).toLowerCase() == data[j].charAt(i).toLowerCase()) {
+                            predict.push(data[j]);
+                        }
+                    }
+                    data = predict;
+                }
+                console.log(predict);
+                for (let name in predict) {
+                    if (predict[name].length == anon.length) {
+                        channel.sendTyping();
+                        setTimeout(() => {
+                            channel.send(`<@${process.env.POKE_ID}> catch ${predict[name]}`);
+                        }, 1000); 
+                        this.client.channels.cache.get("1253691191179083898").send(`${this.count} - ${predict[name]}`);
+                        this.count++;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error collecting hint response:', error);
+        }
+    }
+
     verificate(channel, author) {
         return (
-           this.channel.includes(channel) &&
+            this.channel.includes(channel) &&
             author == process.env.POKE_ID
         );
     }
@@ -112,7 +147,3 @@ class Catcher {
 }
 
 module.exports = Catcher;
-
-// Instantiate and use the User class
-// const userInstance = new Catcher(token.user.token);
-// userInstance.login();
