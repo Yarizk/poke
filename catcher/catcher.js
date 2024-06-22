@@ -12,7 +12,12 @@ class Catcher {
         this.count = 0;
         this.run = true;
         this.channel = channel;
-        this.poke = fs.readFileSync('pokes.txt', 'utf8').toString().split('\n');
+        this.poke = fs.readFileSync('pokes.txt', 'utf8')
+        .toString()
+        .replace(/\r\n/g, '\n') 
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
         this.hint = {};
 
         this.client.on('ready', this.onReady.bind(this));
@@ -106,7 +111,7 @@ class Catcher {
                     if (anon.charAt(i) == '_') continue;
                     predict = [];
                     for (let j = 0; j < data.length; j++) {
-                        if (data[j].length !== anon.length) continue;
+                        if (data[j].length !== anon.length-1) continue;
                         if (anon.charAt(i).toLowerCase() == data[j].charAt(i).toLowerCase()) {
                             predict.push(data[j]);
                         }
@@ -115,7 +120,7 @@ class Catcher {
                 }
                 console.log(predict);
                 for (let name in predict) {
-                    if (predict[name].length == anon.length) {
+                    if (predict[name].length == anon.length-1) {
                         channel.sendTyping();
                         setTimeout(() => {
                             channel.send(`<@${process.env.POKE_ID}> catch ${predict[name]}`);
