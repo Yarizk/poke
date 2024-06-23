@@ -48,6 +48,12 @@ class Catcher {
                 message.channel.send("start");
             }
 
+            if (message.content.startsWith("Congratulations")) {
+                let name = message.content.split(" ").slice(4).join(" ");
+                this.client.channels.cache.get("1253691191179083898").send(`${this.count} - ${name} at ${message.channel.id}`);
+                this.count++;
+            }
+
             if (command == "pk") message.channel.send(`<@${process.env.POKE_ID}> pk`);
             if (command == "shiny") message.channel.send(`<@${process.env.POKE_ID}> pk --shiny`);
             if (command == "speed") message.channel.send(`<@${process.env.POKE_ID}> pk --speed 31`);
@@ -130,13 +136,15 @@ class Catcher {
                 }
                 console.log(predict);
                 for (let name in predict) {
+                    if (predict.length > 10) {
+                        channel.send("Not enough hint");
+                        break;
+                    }
                     if (predict[name].length == anon.length-1) {
                         channel.sendTyping();
                         setTimeout(() => {
                             channel.send(`<@${process.env.POKE_ID}> catch ${predict[name]}`);
                         }, 1000); 
-                        this.client.channels.cache.get("1253691191179083898").send(`${this.count} - ${predict[name]}`);
-                        this.count++;
                     }
                 }
             }
