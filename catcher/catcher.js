@@ -48,6 +48,16 @@ class Catcher {
                 message.channel.send("start");
             }
 
+            if (command == "pk") message.channel.send(`<@${process.env.POKE_ID}> pk`);
+            if (command == "shiny") message.channel.send(`<@${process.env.POKE_ID}> pk --shiny`);
+            if (command == "speed") message.channel.send(`<@${process.env.POKE_ID}> pk --speed 31`);
+            if (command == "legend") message.channel.send(`<@${process.env.POKE_ID}> pk --legendary`);
+            if (command == "duel") message.channel.send(`<@${process.env.POKE_ID}> pk --spdiv 31 --atkiv >25 --defiv > 20 --spdefiv > 20 --hpiv > 20`);
+            if (command == "duel2") message.channel.send(`<@${process.env.POKE_ID}> pk --spdiv 31 --spatkiv > 25 --defiv > 20 --spdefiv > 20 --hpiv > 20`);
+            if (command == "raids") message.channel.send(`<@${process.env.POKE_ID}> pk --defiv > 25 --spdefiv > 25 --hpiv > 25`);
+
+            if (command == "say") message.channel.send(message.content.split("$say")[1].trim());
+
             if (this.run) {
                 for (let i = 0; i < message.embeds.length; i++) {
                     console.log(message.embeds[i].title);
