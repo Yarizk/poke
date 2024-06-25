@@ -61,7 +61,7 @@ class Catcher {
             if (command == "duel") message.channel.send(`<@${process.env.POKE_ID}> pk --spdiv 31 --atkiv >25 --defiv > 20 --spdefiv > 20 --hpiv > 20`);
             if (command == "duel2") message.channel.send(`<@${process.env.POKE_ID}> pk --spdiv 31 --spatkiv > 25 --defiv > 20 --spdefiv > 20 --hpiv > 20`);
             if (command == "raids") message.channel.send(`<@${process.env.POKE_ID}> pk --defiv > 25 --spdefiv > 25 --hpiv > 25`);
-
+            if (command == "pf") message.channel.send(`<@${process.env.POKE_ID}> profile`);
             if (command == "say") message.channel.send(message.content.split("$say")[1].trim());
 
             if (this.run) {
