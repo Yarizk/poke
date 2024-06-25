@@ -6,7 +6,7 @@ dotenv.config();
 
 class Catcher {
 
-    constructor(token, channel) {
+    constructor(token, channel, spammers) {
         this.client = new Client({ checkUpdate: false });
         this.token = token;
         this.count = 0;
@@ -19,6 +19,7 @@ class Catcher {
         .map(line => line.trim())
         .filter(line => line.length > 0);
         this.hint = {};
+        this.spammers = spammers;
 
         this.client.on('ready', this.onReady.bind(this));
         this.client.on("messageCreate", this.onMessageCreate.bind(this));
@@ -38,21 +39,34 @@ class Catcher {
             const args = message.content.slice(prefix.length).trim().split(/ +/g);
             const command = args.shift().toLowerCase();
 
-            if (command == "stop") {
+            if (!this.hint[message.channel.id]) {
+                this.hint[message.channel.id] = { count:0, responses: [] , total: 0 };
+            }
+
+            if (command == "stop catch") {
                 this.run = false;
                 message.channel.send("stop");
             }
 
-            if (command == "start") {
+            if (command == "start catch") {
                 this.run = true;
                 message.channel.send("start");
             }
 
             if (message.content.startsWith("Congratulations")) {
                 let name = message.content.split(" ").slice(4).join(" ");
-                this.client.channels.cache.get("1253691191179083898").send(`${this.count} - ${name} at ${message.channel.id}`);
+                
+                if (this.hint[message.channel.id].total === undefined) {
+                    this.hint[message.channel.id] = { total: 0 };
+                }
+
+                this.hint[message.channel.id].total += 1;
+                this.client.channels.cache.get("1253691191179083898").send(`${this.count} - ${name} at ${message.guild.name}`);
+                if (this.count == 0) this.sendStatusReport(this.client.channels.cache.get("1254029514174890004"));
+            
                 this.count++;
             }
+            
 
             if (command == "pk") message.channel.send(`<@${process.env.POKE_ID}> pk`);
             if (command == "shiny") message.channel.send(`<@${process.env.POKE_ID}> pk --shiny`);
@@ -63,6 +77,35 @@ class Catcher {
             if (command == "raids") message.channel.send(`<@${process.env.POKE_ID}> pk --defiv > 25 --spdefiv > 25 --hpiv > 25`);
             if (command == "pf") message.channel.send(`<@${process.env.POKE_ID}> profile`);
             if (command == "say") message.channel.send(message.content.split("$say")[1].trim());
+            if (command == "status") this.sendStatusReport(message.channel);
+            if (command == "stop all spam") this.spammers.forEach(spammer => spammer.stop());
+            if (command == "start all spam") this.spammers.forEach(spammer => spammer.start());
+
+            if (command == "stop") {
+                message.content.split(" ").forEach(index => {
+                    if (index.length > 0) {
+                        const indexNumber = parseInt(index);
+                        if (indexNumber > 0 && indexNumber <= this.spammers.length) {
+                            this.spammers[indexNumber - 1].stop();
+                        }
+                    }
+                });
+                this.sendStatusReport(message.channel);
+            }
+
+            if (command == "start") {
+                message.content.split(" ").forEach(index => {
+                    if (index.length > 0) {
+                        const indexNumber = parseInt(index);
+                        if (indexNumber > 0 && indexNumber <= this.spammers.length) {
+                            this.spammers[indexNumber - 1].start();
+                        }
+                    }
+                });
+                this.sendStatusReport(message.channel);
+            }
+
+        
 
             if (this.run) {
                 for (let i = 0; i < message.embeds.length; i++) {
@@ -70,7 +113,7 @@ class Catcher {
                     if (this.verificate(message.channel.id, message.author.id)) {
                         console.log("in");
                         if (message.embeds[i].title.includes("A wild pokémon has аppeаred!")) {
-                            this.hint[message.channel.id] = { count: 0, responses: [] };
+                            this.hint[message.channel.id] = { count: 0, responses: [], total: this.hint[message.channel.id].total };
 
                             message.channel.sendTyping();
                             setTimeout(() => {
@@ -152,6 +195,28 @@ class Catcher {
             console.error('Error collecting hint response:', error);
         }
     }
+
+    async sendStatusReport(channel) {
+        let statusReport = "```";
+                statusReport += "┌───┬────────────────────┬────────┬─────────────┬───────┬─────────┐\n";
+                statusReport += "│ # │ Guild ID           │ Total  │ Pokemon     │ Level │ Status  │\n";
+                statusReport += "├───┼────────────────────┼────────┼─────────────┼───────┼─────────┤\n";
+        
+                this.spammers.forEach((spammer, index) => {
+                    const details = spammer.getDetails();
+                    let total = this.hint[spammer.catchId]?.total;
+                    console.log(total)
+                    if (total === undefined) {
+                        total = 0;
+                    }
+                    statusReport += `│ ${String(index + 1).padEnd(2)}| ${spammer.server.padEnd(19)}│ ${total.toString().padEnd(6)} │ ${details.pokemon.padEnd(11)} │ ${details.level.padEnd(6)}│ ${details.status.padEnd(7)} │\n`;
+                });
+        
+                statusReport += "└───┴────────────────────┴────────┴─────────────┴───────┴─────────┘";
+                statusReport += "```"; 
+                channel.send(statusReport);
+            }
+
 
     verificate(channel, author) {
         return (
